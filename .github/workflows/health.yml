@@ -1,0 +1,55 @@
+# Schedule remains unarmed until the operator receipt and recovery gates pass.
+name: Skeleton Draft trial heartbeat
+on:
+  workflow_dispatch:
+    inputs:
+      simulate_failure:
+        description: One operator-notification receipt test
+        required: false
+        default: false
+        type: boolean
+permissions: {}
+concurrency:
+  group: skeleton-trial-monitor
+  cancel-in-progress: false
+jobs:
+  heartbeat:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      - name: Verify deployed paused signal before notification test
+        if: ${{ inputs.simulate_failure }}
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, urllib.error
+          url = 'https://skeletondraft.com/api/health/trial-operations'
+          try:
+              response = urllib.request.urlopen(url, timeout=10)
+          except urllib.error.HTTPError as error:
+              response = error
+          with response:
+              assert response.status == 503
+              assert response.geturl() == url
+              assert json.loads(response.read(513)) == {'healthy': False}
+          print('Verified deployed closed health signal: HTTP503 healthy=false')
+          PY
+      - name: Check aggregate readiness
+        env:
+          SIMULATE_FAILURE: ${{ inputs.simulate_failure || 'false' }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+          if os.environ.get('SIMULATE_FAILURE') == 'true':
+              raise SystemExit('Intentional operator notification receipt test')
+          url = 'https://skeletondraft.com/api/health/trial-operations'
+          try:
+              with urllib.request.urlopen(url, timeout=10) as response:
+                  if response.geturl() != url or response.status != 200:
+                      raise ValueError('Unexpected response')
+                  payload = response.read(513)
+                  if len(payload) > 512 or json.loads(payload).get('healthy') is not True:
+                      raise ValueError('Unhealthy')
+          except Exception:
+              raise SystemExit('Trial recovery heartbeat unavailable; keep new admissions closed')
+          print('Trial recovery heartbeat healthy')
+          PY
