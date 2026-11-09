@@ -1,3 +1,4 @@
+# Published through standard Git; only the public health signal is checked.
 # Public free standard-runner health monitor. No application credentials.
 name: Skeleton Draft trial heartbeat
 on:
