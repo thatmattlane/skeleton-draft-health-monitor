@@ -1,6 +1,8 @@
-# Schedule remains unarmed until the operator receipt and recovery gates pass.
+# Public free standard-runner health monitor. No application credentials.
 name: Skeleton Draft trial heartbeat
 on:
+  schedule:
+    - cron: '2,17,32,47 * * * *'
   workflow_dispatch:
     inputs:
       simulate_failure:
